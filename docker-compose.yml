@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: shora-line-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: app_db
+    volumes:
+      - shora_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  shora-line:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shora-line-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/app_db
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-shora2025}
+      KARAOKE_STORAGE_PATH: /data/KaraokeKZ
+      KARAOKE_DOMAIN: ${KARAOKE_DOMAIN:-karaoke.home.arpa}
+      PORT: 3000
+    volumes:
+      # On Windows set KARAOKE_HOST_DIR=D:/KaraokeKZ in .env
+      - ${KARAOKE_HOST_DIR:-./storage/KaraokeKZ}:/data/KaraokeKZ
+
+volumes:
+  shora_pgdata:
